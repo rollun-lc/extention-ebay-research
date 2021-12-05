@@ -7,4 +7,6 @@ To research, you will need to do the following:
 
 After start, extension will take inputs one by one, and insert them into search field.
 first 50 items from search will be taken. Once all inputs are processed,
-fill will be downloaded with result
+fill will be downloaded with result.
+
+File example - [file](./ebay_research_items_list_2021-12-05T13_50_07.972Z.csv)
