@@ -128,10 +128,16 @@ function Control() {
 
     async function handleStart() {
         let result = [];
-        for (const input of data) {
-            setProgress({ text: `handling ${0} input of total ${data.length}` });
-            await runSearch(data[0]);
-            result.push(...(await parseItemsList()));
+        for (let idx = 0; idx < data.length; idx++) {
+            const input = data[idx];
+            setProgress({ text: `handling ${idx} input of total ${data.length}` });
+            await runSearch(input);
+            const items = await parseItemsList();
+            result.push(...items.map(item => ({
+                ...item,
+                input,
+                inputRowNumber: idx + 1,
+            })));
         }
         setProgress(null);
         // console.log(result);
