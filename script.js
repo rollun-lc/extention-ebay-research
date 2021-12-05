@@ -98,7 +98,7 @@ function Modal({ isOpen, onSubmit, onCancel, initData }) {
 }
 
 function Control() {
-    const [ data, setData ] = useState(['ACERBIS']);
+    const [ data, setData ] = useState(null);
     const [ loadDataModalOpen, toggleModal ] = useState(false);
     const [ progress, setProgress ] = useState(null);
 
