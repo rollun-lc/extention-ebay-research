@@ -51,7 +51,6 @@ function setupShortcuts() {
     window.useState = React.useState;
 }
 
-// start link - https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=stub&dayRange=30&categoryId=6000&offset=0&limit=50
 
 function main() {
     setupShortcuts();
@@ -135,8 +134,8 @@ function Control() {
             result.push(...(await parseItemsList()));
         }
         setProgress(null);
-        console.log(result);
-        // downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
+        // console.log(result);
+        downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
     }
 
     function handleStop() {
