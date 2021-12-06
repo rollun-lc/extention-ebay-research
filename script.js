@@ -176,6 +176,16 @@ function Control() {
     }
 
     async function handleStart() {
+        // const { data } = await rollunAPI.get('/api/datastore/EbayResearchRequests?eqn(parsed_at)');
+        // const sortedData = data.sort((data1, data2) => {
+        //     const [, date1] = data1.id.split('#');
+        //     const [, date2] = data2.id.split('#');
+        //
+        //     return new Date(date1) - new Date(date2);
+        // })
+        //
+        // setData(sortedData);
+
         let result = [];
 
         for (let idx = 0; idx < data.length; idx++) {
@@ -194,13 +204,17 @@ function Control() {
             }))
 
             result.push(...listings);
-            await rollunAPI.post('/api/datastore/EbayResearchRequests', stats);
-            // did not find how to make multiCreate in datastore
-            await Promise.all(
-              items.map((item) =>
-                rollunAPI.post('/api/datastore/EbayResearchResults', item)
-              )
-            )
+            try {
+                await rollunAPI.post('/api/datastore/EbayResearchRequests', stats);
+                // did not find how to make multiCreate in datastore
+                await Promise.all(
+                  items.map((item) =>
+                    rollunAPI.post('/api/datastore/EbayResearchResults', item)
+                  )
+                )
+            } catch (e) {
+                alert(`Could not update research info ${e.message}`);
+            }
         }
         setProgress(null);
         downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
@@ -255,7 +269,6 @@ function Control() {
             id: `${input}#${currentDate}`,
             input,
             ...stats,
-            is_parsed: true,
             parsed_at: currentDate,
         };
     }
@@ -299,13 +312,13 @@ function Control() {
     }
 
     return e('div', {}, 
-        e('button', { 
+        e('button', {
                 disabled: !!progress,
                 onClick: () => toggleModal(true)
-            }, 
+            },
             'load data'
         ),
-        progress    
+        progress
             ? e('button', { onClick: handleStop }, 'stop')
             : e('button', { onClick: handleStart }, 'start'),
         progress && e('div', {}, progress.text),
