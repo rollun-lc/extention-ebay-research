@@ -1,6 +1,6 @@
 {
     "name": "Ebay research",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "manifest_version": 2,
     "author": "rollun.com",
   
@@ -19,6 +19,7 @@
       "matches": ["https://www.ebay.com/sh/research?*"],
       "js": [
           "react.development.js",
+          "axios.js",
           "react-dom.development.js",
           "script.js"
       ],

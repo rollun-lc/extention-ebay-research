@@ -1,4 +1,12 @@
 window.onload = main;
+const rollunAPI = axios.create({
+    baseURL: 'https://rollun.net',
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
+    }
+});
 
 async function wait(ms) {
     return new Promise((resolve) => setTimeout(() => resolve(), ms));
@@ -16,6 +24,12 @@ function castValueToCSVValue(value) {
 	} else {
 		return JSON.stringify(value).replace(/"/g, '""');
 	}
+}
+
+// Sold price range - sold_price_range
+// Sell-through - sell_through
+function toSnakeCase(inputString) {
+    return inputString.replace(/(\s+|[^\w+])/gi, '_').toLowerCase();
 }
 
 /**
@@ -61,6 +75,22 @@ function main() {
     insertAfter(mountContainer.firstElementChild, mountElement);
 
     ReactDOM.render(e(Control), mountElement);
+}
+
+function castDollarStringToNumber(dollarString) {
+    return castNumberStringToNumber(dollarString.replace('$', ''));
+}
+
+function castPercentStringToNumber(percentString) {
+    return +percentString.replace('%', '') / 100;
+}
+
+function castNumberStringToNumber(numberString) {
+    return +numberString.replaceAll(',', '')
+}
+
+function formatDate(date) {
+    return date.toISOString().slice(0, 10)
 }
 
 function Modal({ isOpen, onSubmit, onCancel, initData }) {
@@ -109,6 +139,25 @@ function Control() {
         toggleModal(false)
     }
 
+    async function selectCategory(category) {
+        document
+          .querySelector('.category-selector-panel__edit-button')
+          ?.click();
+
+        Array
+          .from(
+            document.querySelectorAll('[role="tree"] [role="treeitem"] .category-selection-row__category-name-value')
+          )
+          .find(({ innerText }) => new RegExp(category, 'ig').test(innerText))
+          ?.click();
+
+        document
+          .querySelector('.category-selection-lightbox-dialog__footer-apply')
+          ?.click();
+
+        await wait(3000)
+    }
+
     async function runSearch(searchString) {
         // insert input value
         const inputQ = '.textbox__control';
@@ -123,24 +172,37 @@ function Control() {
         const searchBtn = document.querySelector(searchBtnQ);
         searchBtn.click();
 
-        await wait(2500);
+        await wait(4000);
     }
 
     async function handleStart() {
         let result = [];
+
         for (let idx = 0; idx < data.length; idx++) {
             const input = data[idx];
             setProgress({ text: `handling ${idx} input of total ${data.length}` });
             await runSearch(input);
-            const items = await parseItemsList();
-            result.push(...items.map(item => ({
+            await selectCategory('ebay motors');
+            const stats = parseStats(input);
+            const items = await parseItemsList(stats.id);
+            console.log('items', items);
+            console.log('stats', stats);
+            const listings = items.map(item => ({
                 ...item,
                 input,
                 inputRowNumber: idx + 1,
-            })));
+            }))
+
+            result.push(...listings);
+            await rollunAPI.post('/api/datastore/EbayResearchRequests', stats);
+            // did not find how to make multiCreate in datastore
+            await Promise.all(
+              items.map((item) =>
+                rollunAPI.post('/api/datastore/EbayResearchResults', item)
+              )
+            )
         }
         setProgress(null);
-        // console.log(result);
         downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
     }
 
@@ -148,11 +210,57 @@ function Control() {
         // TODO
     }
 
-    function parseStats() {
-        // TODO: add parsing for total stats of search
+    function parseStats(input) {
+        const metricsContainer = document.querySelector('.aggregates');
+        const dollarStringParser = (value, header) => ({ [header]: castDollarStringToNumber(value) });
+        const numberStringParser = (value, header) => ({ [header]: castNumberStringToNumber(value) });
+        const percentStringParser = (value, header) => ({ [header]: castPercentStringToNumber(value) });
+
+        const parseStrategy = {
+            avg_sold_price: dollarStringParser,
+            avg_shipping: dollarStringParser,
+            total_sales: dollarStringParser,
+            free_shipping: percentStringParser,
+            sell_through: percentStringParser,
+            total_sold: numberStringParser,
+            total_sellers: numberStringParser,
+            sold_price_range: (value) => {
+                const [min, max] = value.split('–');
+
+                return {
+                    sold_price_min: castDollarStringToNumber(min.trim()),
+                    sold_price_max: castDollarStringToNumber(max.trim()),
+                }
+            }
+        }
+
+        if (!metricsContainer) {
+            return null;
+        }
+
+        const stats = Array.from(metricsContainer.querySelectorAll('.aggregate-metric')).reduce((acc, curr) => {
+            const value = curr.querySelector('.metric-value').innerText.trim();
+            const header = curr.querySelector('.metric-title').innerText.trim();
+            const snakeCaseHeader = toSnakeCase(header);
+
+            return {
+                ...acc,
+                ...(parseStrategy[snakeCaseHeader](value, snakeCaseHeader)),
+            }
+        }, {})
+
+        const currentDate = formatDate(new Date());
+
+        return {
+            id: `${input}#${currentDate}`,
+            input,
+            ...stats,
+            is_parsed: true,
+            parsed_at: currentDate,
+        };
     }
 
-    async function parseItemsList() {
+    async function parseItemsList(statId) {
         const rows = document.querySelectorAll('.research-table-row');
 
         function parseRow(row) {
@@ -164,10 +272,10 @@ function Control() {
             const title = titleEl.innerText;
 
             const avgPriceEl = row.querySelector('.research-table-row__avgSoldPrice');
-            const price = avgPriceEl.firstElementChild.firstElementChild.innerText.replace('$', '').replaceAll(',', '');
+            const price = castDollarStringToNumber(avgPriceEl.firstElementChild.firstElementChild.innerText);
 
             const avgShippingCostEl = row.querySelector('.research-table-row__avgShippingCost');
-            const shipPrice = avgShippingCostEl.firstElementChild.firstElementChild.innerText.replace('$', '').replaceAll(',', '');
+            const shipPrice = castDollarStringToNumber(avgShippingCostEl.firstElementChild.firstElementChild.innerText);
 
             const totalSoldEl = row.querySelector('.research-table-row__totalSoldCount');
 
@@ -176,16 +284,18 @@ function Control() {
 
             return { 
                 id, 
-                title, 
+                title,
                 link, 
-                avgSoldPrice: +price, 
-                avgShipping: +shipPrice, 
-                totalSold: +totalSoldEl.innerText,
-                lastDateSold: lastDateSold.toISOString().slice(0, 10)
+                avg_sold_price: price,
+                avg_shipping: shipPrice,
+                total_sold: +totalSoldEl.innerText,
+                last_date_sold: formatDate(lastDateSold),
+                parsed_at: formatDate(new Date()),
+                request_id: statId
             };
         }
 
-        return Array.from(rows).map(parseRow);
+        return Array.from(rows).map(parseRow).filter(({ total_sold }) => total_sold > 5);
     }
 
     return e('div', {}, 
@@ -208,3 +318,4 @@ function Control() {
         data && e('div', {}, `Loaded ${data.length} input(s)`),
     );
 }
+
