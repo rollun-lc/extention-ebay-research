@@ -1,12 +1,10 @@
 To research, you will need to do the following:
 - go to this link - https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=stub&dayRange=30&categoryId=6000&offset=0&limit=50
 - (optional) change category
-- press 'load data' button
-- insert inputs to table - 1 line, 1 input
 - press start.
 
-After start, extension will take inputs one by one, and insert them into search field.
-first 50 items from search will be taken. Once all inputs are processed,
-fill will be downloaded with result.
+After start, extension will take rows from https://rollun.net/EbayResearchRequests, that has not been parsed(parsed_at is null)
+and parse them. Results of the parsing will be stored in https://rollun.net/EbayResearchRequests and
+https://rollun.net/EbayResearchResults.
 
-File example - [file](./ebay_research_items_list_2021-12-05T13_50_07.972Z.csv)
+To install extension - https://www.cnet.com/tech/services-and-software/how-to-install-chrome-extensions-manually/

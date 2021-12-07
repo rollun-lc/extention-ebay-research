@@ -24,41 +24,6 @@ function main() {
     ReactDOM.render(e(Control), mountElement);
 }
 
-
-function Modal({ isOpen, onSubmit, onCancel, initData }) {
-    const textAreaRef = React.createRef(null);
-    if (!isOpen) return null
-        
-    function handleSubmit() {
-        onSubmit(textAreaRef.current.value);
-    }
-
-    return ReactDOM.createPortal(    
-        e('div', { 
-            style: {
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'absolute',
-                zIndex: 999,
-                top: 0,
-                left: 0,
-                width: 300,
-                height: 500,
-                background: 'white',
-                padding: '10px',
-            }
-        },
-            e('h3', {}, 'Insert list of inputs'),
-            e('textarea', { ref: textAreaRef, rows: 40, defaultValue: initData }),
-            e('div', {},
-                e('button', { style: { marginTop: '10px', }, onClick: handleSubmit }, 'Load'),
-                e('button', { style: { marginTop: '10px', }, onClick: onCancel }, 'Cancel'),
-            )
-        ),
-        document.body
-    );
-}
-
 function Control() {
     const [ data, setData ] = useState(null);
     const [ progress, setProgress ] = useState(null);
@@ -108,7 +73,12 @@ function Control() {
 
             return new Date(date1) - new Date(date2);
           })
-          .map(({ id }) => id.split('#')[0])
+          .map(({ id }) => ({ id, input: id.split('#')[0] }))
+    }
+
+    function isListingFoundInSearch() {
+        const errorContainer = document.querySelector('.sold-tab-content .research__generic-error');
+        return !errorContainer;
     }
 
     async function handleStart() {
@@ -117,10 +87,17 @@ function Control() {
 
         let result = [];
 
+        // if not found in search close modal and fill error
         for (let idx = 0; idx < dataToResearch.length; idx++) {
-            const input = dataToResearch[idx];
+            const { id, input } = dataToResearch[idx];
             setProgress({ text: `handling ${idx} input of total ${dataToResearch.length}` });
             await runSearch(input);
+
+            if (!isListingFoundInSearch()) {
+                await writeResearchRequestToDatastore({ id, parsed_at: formatDate(new Date()) });
+                continue;
+            }
+
             await selectCategory('ebay motors');
             const stats = parseStats(input);
             const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
@@ -140,7 +117,7 @@ function Control() {
                 alert(`Could not update research info ${e.message}`);
             }
         }
-        setProgress(null);
+        setProgress({ text: `Finished parsing ${dataToResearch.length} inputs` });
         downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
     }
 
