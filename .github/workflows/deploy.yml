@@ -1,0 +1,30 @@
+name: Post release to slack
+
+on:
+  push:
+    tags:
+      - '*'
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: little-core-labs/get-git-tag@v3.0.1
+        id: tagName
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          filename: ${{ github.event.repository.name }}-${{ steps.tagName.outputs.tag }}.zip
+          exclusions: '*.git* /*node_modules/* .editorconfig'
+
+      - name: Upload to slack step
+        uses: adrey/slack-file-upload-action@master
+        with:
+          token: ${{ secrets.SLACK_TOKEN }}
+          path: ${{ github.event.repository.name }}-${{  steps.tagName.outputs.tag }}.zip
+          channel: extension_releases

@@ -24,7 +24,7 @@ const watchChanges = (dir, lastTimestamp) => {
     })
 }
 
-chrome.management.getSelf (self => {
+chrome.management.getSelf(self => {
     if (self.installType === 'development') {
         chrome.runtime.getPackageDirectoryEntry (dir => watchChanges (dir))
         chrome.tabs.query ({ active: true, lastFocusedWindow: true }, tabs => { // NB: see https://github.com/xpl/crx-hotreload/issues/5
