@@ -8,63 +8,10 @@ const rollunAPI = axios.create({
     }
 });
 
-async function wait(ms) {
-    return new Promise((resolve) => setTimeout(() => resolve(), ms));
-}
-
-function insertAfter(referenceNode, newNode) {
-    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-}
-
-function castValueToCSVValue(value) {
-	if (typeof value === 'string') {
-		return value.replace(/"/g, '""');
-	} else if (typeof value === 'number') {
-		return value.toString();
-	} else {
-		return JSON.stringify(value).replace(/"/g, '""');
-	}
-}
-
-// Sold price range - sold_price_range
-// Sell-through - sell_through
-function toSnakeCase(inputString) {
-    return inputString.replace(/(\s+|[^\w+])/gi, '_').toLowerCase();
-}
-
-/**
- * Data to CSV
- * Example:
- * const data = [{id: '1', field: '2'}, {id: '3', field: '4'}]
- * dataToCSV(data) -> 'id,field\n"1","2"\n"3","4"\n'
- */
-
-function arrayToCSV(flatData) {
-	if (flatData.length === 0) {
-		return '';
-	}
-	const header = `"${Object.keys(flatData[0]).join('","')}"`;
-	const data = flatData
-		.map(row => Object.values(row).map(val => `"${castValueToCSVValue(val)}"`).join(','))
-		.join('\n');
-	return `${header}\n${data}`;
-}
-
-function downloadDataWithContentType(data, type, filename) {
-	const binaryData = new Blob([data], {type: type});
-	const link = document.createElement('a');
-	link.href = URL.createObjectURL(binaryData);
-	link.download = filename;
-	link.target = '_blank';
-	link.click();
-	URL.revokeObjectURL(link.href);
-};
-
 function setupShortcuts() {
     window.e = React.createElement;
     window.useState = React.useState;
 }
-
 
 function main() {
     setupShortcuts();
@@ -77,21 +24,6 @@ function main() {
     ReactDOM.render(e(Control), mountElement);
 }
 
-function castDollarStringToNumber(dollarString) {
-    return castNumberStringToNumber(dollarString.replace('$', ''));
-}
-
-function castPercentStringToNumber(percentString) {
-    return +percentString.replace('%', '') / 100;
-}
-
-function castNumberStringToNumber(numberString) {
-    return +numberString.replaceAll(',', '')
-}
-
-function formatDate(date) {
-    return date.toISOString().slice(0, 10)
-}
 
 function Modal({ isOpen, onSubmit, onCancel, initData }) {
     const textAreaRef = React.createRef(null);
@@ -129,15 +61,7 @@ function Modal({ isOpen, onSubmit, onCancel, initData }) {
 
 function Control() {
     const [ data, setData ] = useState(null);
-    const [ loadDataModalOpen, toggleModal ] = useState(false);
     const [ progress, setProgress ] = useState(null);
-
-    function handleLoadData(value) {
-        const inputs = value.split('\n');
-        setData(inputs);
-        setProgress(null);
-        toggleModal(false)
-    }
 
     async function selectCategory(category) {
         document
@@ -175,26 +99,31 @@ function Control() {
         await wait(4000);
     }
 
+    async function getDataToResearch() {
+        const { data } = await rollunAPI.get('/api/datastore/EbayResearchRequests?eqn(parsed_at)');
+        return data
+          .sort((data1, data2) => {
+            const [, date1] = data1.id.split('#');
+            const [, date2] = data2.id.split('#');
+
+            return new Date(date1) - new Date(date2);
+          })
+          .map(({ id }) => id.split('#')[0])
+    }
+
     async function handleStart() {
-        // const { data } = await rollunAPI.get('/api/datastore/EbayResearchRequests?eqn(parsed_at)');
-        // const sortedData = data.sort((data1, data2) => {
-        //     const [, date1] = data1.id.split('#');
-        //     const [, date2] = data2.id.split('#');
-        //
-        //     return new Date(date1) - new Date(date2);
-        // })
-        //
-        // setData(sortedData);
+        const dataToResearch = await getDataToResearch();
+        setData(dataToResearch);
 
         let result = [];
 
-        for (let idx = 0; idx < data.length; idx++) {
-            const input = data[idx];
-            setProgress({ text: `handling ${idx} input of total ${data.length}` });
+        for (let idx = 0; idx < dataToResearch.length; idx++) {
+            const input = dataToResearch[idx];
+            setProgress({ text: `handling ${idx} input of total ${dataToResearch.length}` });
             await runSearch(input);
             await selectCategory('ebay motors');
             const stats = parseStats(input);
-            const items = await parseItemsList(stats.id);
+            const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
             console.log('items', items);
             console.log('stats', stats);
             const listings = items.map(item => ({
@@ -205,13 +134,8 @@ function Control() {
 
             result.push(...listings);
             try {
-                await rollunAPI.post('/api/datastore/EbayResearchRequests', stats);
-                // did not find how to make multiCreate in datastore
-                await Promise.all(
-                  items.map((item) =>
-                    rollunAPI.post('/api/datastore/EbayResearchResults', item)
-                  )
-                )
+                await writeResearchRequestToDatastore(stats)
+                await writeResearchResultsToDatastore(items);
             } catch (e) {
                 alert(`Could not update research info ${e.message}`);
             }
@@ -220,16 +144,23 @@ function Control() {
         downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
     }
 
+    async function writeResearchResultsToDatastore(items) {
+        // did not find how to make multiCreate in datastore
+        await Promise.all(
+          items.map((item) =>
+            rollunAPI.post('/api/datastore/EbayResearchResults', item)
+          )
+        )
+    }
+    async function writeResearchRequestToDatastore(stats) {
+        await rollunAPI.put('/api/datastore/EbayResearchRequests', stats);
+    }
+
     function handleStop() {
         // TODO
     }
 
-    function parseStats(input) {
-        const metricsContainer = document.querySelector('.aggregates');
-        const dollarStringParser = (value, header) => ({ [header]: castDollarStringToNumber(value) });
-        const numberStringParser = (value, header) => ({ [header]: castNumberStringToNumber(value) });
-        const percentStringParser = (value, header) => ({ [header]: castPercentStringToNumber(value) });
-
+    function getStatsFromMetricContainer(container) {
         const parseStrategy = {
             avg_sold_price: dollarStringParser,
             avg_shipping: dollarStringParser,
@@ -240,7 +171,6 @@ function Control() {
             total_sellers: numberStringParser,
             sold_price_range: (value) => {
                 const [min, max] = value.split('–');
-
                 return {
                     sold_price_min: castDollarStringToNumber(min.trim()),
                     sold_price_max: castDollarStringToNumber(max.trim()),
@@ -248,11 +178,7 @@ function Control() {
             }
         }
 
-        if (!metricsContainer) {
-            return null;
-        }
-
-        const stats = Array.from(metricsContainer.querySelectorAll('.aggregate-metric')).reduce((acc, curr) => {
+        return Array.from(container.querySelectorAll('.aggregate-metric')).reduce((acc, curr) => {
             const value = curr.querySelector('.metric-value').innerText.trim();
             const header = curr.querySelector('.metric-title').innerText.trim();
             const snakeCaseHeader = toSnakeCase(header);
@@ -262,7 +188,15 @@ function Control() {
                 ...(parseStrategy[snakeCaseHeader](value, snakeCaseHeader)),
             }
         }, {})
+    }
 
+    function parseStats(input) {
+        const metricsContainer = document.querySelector('.aggregates');
+        if (!metricsContainer) {
+            return null;
+        }
+
+        const stats = getStatsFromMetricContainer(metricsContainer);
         const currentDate = formatDate(new Date());
 
         return {
@@ -308,26 +242,14 @@ function Control() {
             };
         }
 
-        return Array.from(rows).map(parseRow).filter(({ total_sold }) => total_sold > 5);
+        return Array.from(rows).map(parseRow);
     }
 
     return e('div', {}, 
-        e('button', {
-                disabled: !!progress,
-                onClick: () => toggleModal(true)
-            },
-            'load data'
-        ),
         progress
             ? e('button', { onClick: handleStop }, 'stop')
             : e('button', { onClick: handleStart }, 'start'),
         progress && e('div', {}, progress.text),
-        e(Modal, {
-            initData: data ? data.join('\n') : undefined,
-            isOpen: loadDataModalOpen,
-            onSubmit: handleLoadData,
-            onCancel: () => toggleModal(false),
-        }),
         data && e('div', {}, `Loaded ${data.length} input(s)`),
     );
 }
