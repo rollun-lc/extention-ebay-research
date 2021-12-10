@@ -174,7 +174,8 @@ function Control() {
         }
 
         const stats = getStatsFromMetricContainer(metricsContainer);
-
+        const currentDate = formatDate(new Date())
+        
         return {
             id,
             input,
