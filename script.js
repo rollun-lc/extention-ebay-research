@@ -193,10 +193,11 @@ function Control() {
 
         function parseRow(row) {
             console.log(row);
-            const linkEl = row.querySelector('.research-table-row__product-info-name');
+            const linkWrapper = row.querySelector('.research-table-row__product-info-name');
+            const linkEl = linkWrapper.querySelector('a');
             const link = linkEl?.href || null;
 
-            const titleEl = linkEl.querySelector('span');
+            const titleEl = linkWrapper.querySelector('span');
             const id = titleEl.dataset.itemId;
             const title = titleEl.innerText;
 
