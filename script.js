@@ -99,7 +99,7 @@ function Control() {
             }
 
             await selectCategory('ebay motors');
-            const stats = parseStats(input);
+            const stats = parseStats(input, id);
             const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
             console.log('items', items);
             console.log('stats', stats);
@@ -167,17 +167,16 @@ function Control() {
         }, {})
     }
 
-    function parseStats(input) {
+    function parseStats(input, id) {
         const metricsContainer = document.querySelector('.aggregates');
         if (!metricsContainer) {
             return null;
         }
 
         const stats = getStatsFromMetricContainer(metricsContainer);
-        const currentDate = formatDate(new Date());
 
         return {
-            id: `${input}#${currentDate}`,
+            id,
             input,
             ...stats,
             parsed_at: currentDate,
