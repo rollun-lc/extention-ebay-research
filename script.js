@@ -44,7 +44,7 @@ function Control() {
           .querySelector('.category-selection-lightbox-dialog__footer-apply')
           ?.click();
 
-        await wait(3000)
+        await wait(4000)
     }
 
     async function runSearch(searchString) {
@@ -160,6 +160,10 @@ function Control() {
             const header = curr.querySelector('.metric-title').innerText.trim();
             const snakeCaseHeader = toSnakeCase(header);
 
+            if (!(snakeCaseHeader in parseStrategy)) {
+                return acc;
+            }
+
             return {
                 ...acc,
                 ...(parseStrategy[snakeCaseHeader](value, snakeCaseHeader)),
@@ -175,7 +179,7 @@ function Control() {
 
         const stats = getStatsFromMetricContainer(metricsContainer);
         const currentDate = formatDate(new Date())
-        
+
         return {
             id,
             input,
@@ -188,8 +192,9 @@ function Control() {
         const rows = document.querySelectorAll('.research-table-row');
 
         function parseRow(row) {
-            const linkEl = row.querySelector('.research-table-row__product-info a');
-            const link = linkEl.href;
+            console.log(row);
+            const linkEl = row.querySelector('.research-table-row__product-info-name');
+            const link = linkEl?.href || null;
 
             const titleEl = linkEl.querySelector('span');
             const id = titleEl.dataset.itemId;
@@ -203,18 +208,20 @@ function Control() {
 
             const totalSoldEl = row.querySelector('.research-table-row__totalSoldCount');
 
-            const lastDateSoldEl = row.querySelector('.research-table-row__dateLastSold');
-            const lastDateSold = new Date(lastDateSoldEl.innerText);
+            const lastDateSoldText = row.querySelector('.research-table-row__dateLastSold')?.innerText;
+            const lastDateSold = lastDateSoldText ? formatDate(new Date(lastDateSoldText)) : null;
 
-            return { 
-                id, 
+            const currentDate = formatDate(new Date());
+
+            return {
+                listing_id: id,
                 title,
                 link, 
                 avg_sold_price: price,
                 avg_shipping: shipPrice,
                 total_sold: +totalSoldEl.innerText,
-                last_date_sold: formatDate(lastDateSold),
-                parsed_at: formatDate(new Date()),
+                last_date_sold: lastDateSold,
+                parsed_at: currentDate,
                 request_id: statId
             };
         }
