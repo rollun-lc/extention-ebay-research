@@ -52,7 +52,7 @@ function Control() {
         const inputQ = '.textbox__control';
         const input = document.querySelector(inputQ);
         input.value = searchString;
-        
+
         input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
 
         await wait(150);
@@ -85,40 +85,30 @@ function Control() {
         const dataToResearch = await getDataToResearch();
         setData(dataToResearch);
 
-        let result = [];
-
-        // if not found in search close modal and fill error
         for (let idx = 0; idx < dataToResearch.length; idx++) {
             const { id, input } = dataToResearch[idx];
-            setProgress({ text: `handling ${idx} input of total ${dataToResearch.length}` });
-            await runSearch(input);
-
-            if (!isListingFoundInSearch()) {
-                await writeResearchRequestToDatastore({ id, parsed_at: formatDate(new Date()) });
-                continue;
-            }
-
-            await selectCategory('ebay motors');
-            const stats = parseStats(input, id);
-            const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
-            console.log('items', items);
-            console.log('stats', stats);
-            const listings = items.map(item => ({
-                ...item,
-                input,
-                inputRowNumber: idx + 1,
-            }))
-
-            result.push(...listings);
             try {
-                await writeResearchRequestToDatastore(stats)
+                setProgress({ text: `handling ${idx} input of total ${dataToResearch.length}` });
+                await runSearch(input);
+
+                if (!isListingFoundInSearch()) {
+                    await writeResearchRequestToDatastore({ id, parsed_at: formatDate(new Date()) });
+                    continue;
+                }
+
+                await selectCategory('ebay motors');
+                const stats = parseStats(input, id);
+                const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
+                console.log('items', items);
+                console.log('stats', stats);
+
+                await writeResearchRequestToDatastore(stats);
                 await writeResearchResultsToDatastore(items);
             } catch (e) {
-                alert(`Could not update research info ${e.message}`);
+                alert(`Could not parse item - ${id}. ${e.message}`);
             }
         }
         setProgress({ text: `Finished parsing ${dataToResearch.length} inputs` });
-        downloadDataWithContentType(arrayToCSV(result), 'text/csv', `ebay_research_items_list_${new Date().toISOString()}.csv`);
     }
 
     async function writeResearchResultsToDatastore(items) {
@@ -217,7 +207,7 @@ function Control() {
             return {
                 listing_id: id,
                 title,
-                link, 
+                link,
                 avg_sold_price: price,
                 avg_shipping: shipPrice,
                 total_sold: +totalSoldEl.innerText,
@@ -230,10 +220,8 @@ function Control() {
         return Array.from(rows).map(parseRow);
     }
 
-    return e('div', {}, 
-        progress
-            ? e('button', { onClick: handleStop }, 'stop')
-            : e('button', { onClick: handleStart }, 'start'),
+    return e('div', {},
+        !progress && e('button', { onClick: handleStart }, 'start'),
         progress && e('div', {}, progress.text),
         data && e('div', {}, `Loaded ${data.length} input(s)`),
     );
