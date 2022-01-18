@@ -81,6 +81,19 @@ function Control() {
         return !errorContainer;
     }
 
+    async function selectTab(tabName) {
+        const [tabToSelect] = [...document.querySelector('.tabs__items').children]
+          .filter(({ innerText }) => innerText.trim() === tabName);
+
+        if (!tabToSelect) {
+            // if no tab is found, just ignore
+            return;
+        }
+
+        tabToSelect.click();
+        await wait(3000);
+    }
+
     async function handleStart() {
         const dataToResearch = await getDataToResearch();
         setData(dataToResearch);
@@ -97,6 +110,7 @@ function Control() {
                 }
 
                 await selectCategory('ebay motors');
+                await selectTab('Sold');
                 const stats = parseStats(input, id);
                 const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
                 console.log('items', items);
@@ -105,6 +119,7 @@ function Control() {
                 await writeResearchRequestToDatastore(stats);
                 await writeResearchResultsToDatastore(items);
             } catch (e) {
+                console.log(e.stack);
                 alert(`Could not parse item - ${id}. ${e.message}`);
             }
         }
@@ -163,18 +178,21 @@ function Control() {
 
     function parseStats(input, id) {
         const metricsContainer = document.querySelector('.aggregates');
+        const currentDate = formatDate(new Date())
+        const result = {
+            id, parsed_at: currentDate
+        }
+
         if (!metricsContainer) {
-            return null;
+            return result;
         }
 
         const stats = getStatsFromMetricContainer(metricsContainer);
-        const currentDate = formatDate(new Date())
 
         return {
-            id,
+            ...result,
             input,
             ...stats,
-            parsed_at: currentDate,
         };
     }
 
