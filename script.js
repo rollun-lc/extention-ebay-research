@@ -112,7 +112,7 @@ function Control() {
                 await selectCategory('ebay motors');
                 await selectTab('Sold');
                 const stats = parseStats(input, id);
-                const items = (await parseItemsList(stats.id)).filter(({ total_sold }) => total_sold > 5);
+                const items = (await parseAllItems(stats.id)).filter(({ total_sold }) => total_sold > 5);
                 console.log('items', items);
                 console.log('stats', stats);
 
@@ -176,6 +176,32 @@ function Control() {
         }, {})
     }
 
+    async function parseAllItems(statId) {
+        const result = [];
+        const isValidListingToParse = (item) => {
+            if (!item) {
+                return true;
+            }
+
+            return item.total_sold > 5;
+        }
+
+        while (isValidOffset() && isValidListingToParse(result.at(-1))) {
+            const nextPageButton = document.querySelector('button.pagination__next');
+            result.push(...await parseItemsList(statId));
+            console.log(result);
+            nextPageButton.click();
+            await wait(4000);
+        }
+
+        return result;
+    }
+
+    function isValidOffset() {
+        const errorText = document.querySelector('.page-notice__title');
+        return !errorText?.includes('The offset provided is incorrect. Please correct the offset.');
+    }
+
     function parseStats(input, id) {
         const metricsContainer = document.querySelector('.aggregates');
         const currentDate = formatDate(new Date())
@@ -196,11 +222,23 @@ function Control() {
         };
     }
 
+
     async function parseItemsList(statId) {
         const rows = document.querySelectorAll('.research-table-row');
 
-        function parseRow(row) {
-            console.log(row);
+        async function getMpn(id) {
+            const htmlPage = await (await fetch(`https://www.ebay.com/itm/${id}?nordt=true&orig_cvip=true&rt=nc`)).text();
+            const doc = new DOMParser().parseFromString(htmlPage, 'text/html');
+
+            const mpnLabelIndex = [...doc.querySelectorAll('.ux-labels-values__labels')].findIndex((item) => item.innerText === 'Manufacturer Part Number:');
+            if (mpnLabelIndex === -1) {
+                return null;
+            }
+
+            return doc.querySelectorAll('.ux-labels-values__values')[mpnLabelIndex]?.innerText?.trim() || null;
+        }
+
+        async function parseRow(row) {
             const linkWrapper = row.querySelector('.research-table-row__product-info-name');
             const linkEl = linkWrapper.querySelector('a');
             const link = linkEl?.href || null;
@@ -231,11 +269,12 @@ function Control() {
                 total_sold: +totalSoldEl.innerText,
                 last_date_sold: lastDateSold,
                 parsed_at: currentDate,
-                request_id: statId
+                request_id: statId,
+                mpn: await getMpn(id),
             };
         }
 
-        return Array.from(rows).map(parseRow);
+        return Promise.all(Array.from(rows).map(parseRow));
     }
 
     return e('div', {},
