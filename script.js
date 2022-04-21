@@ -94,6 +94,16 @@ function Control() {
         await wait(3000);
     }
 
+    function selectFilter(filterName) {
+        const [filterElement] = [...document.querySelectorAll('.research-table-header__inner-item > .text')]
+          .filter((item) => item.innerText === filterName);
+        const filterDownElement = filterElement.parentElement.querySelector('.down');
+
+        if (!filterDownElement) {
+            filterElement.click();
+        }
+    }
+
     async function handleStart() {
         const dataToResearch = await getDataToResearch();
         setData(dataToResearch);
@@ -111,6 +121,7 @@ function Control() {
 
                 await selectCategory('ebay motors');
                 await selectTab('Sold');
+                await selectFilter('Total sold');
                 const stats = parseStats(input, id);
                 const items = (await parseAllItems(stats.id)).filter(({ total_sold }) => total_sold > 5);
                 console.log('items', items);
