@@ -64,7 +64,7 @@ function Control() {
         await wait(4000);
     }
 
-    async function getDataToResearch() {
+    async function getDataToResearch(limit) {
         const { data } = await rollunAPI.get('/api/datastore/EbayResearchRequests?eqn(parsed_at)');
         return data
           .sort((data1, data2) => {
@@ -74,6 +74,7 @@ function Control() {
             return new Date(date1) - new Date(date2);
           })
           .map(({ id }) => ({ id, input: id.split('#')[0] }))
+          .slice(0, limit ?? data.length)
     }
 
     function isListingFoundInSearch() {
@@ -104,8 +105,12 @@ function Control() {
         }
     }
 
+    function filterItems(items, rules) {
+        return items.filter((item) => rules.every((rule) => rule(item)))
+    }
+
     async function handleStart() {
-        const dataToResearch = await getDataToResearch();
+        const dataToResearch = await getDataToResearch(500);
         setData(dataToResearch);
 
         for (let idx = 0; idx < dataToResearch.length; idx++) {
@@ -123,7 +128,13 @@ function Control() {
                 await selectTab('Sold');
                 await selectFilter('Total sold');
                 const stats = parseStats(input, id);
-                const items = (await parseAllItems(stats.id)).filter(({ total_sold }) => total_sold > 5);
+                const items = filterItems(
+                  await parseAllItems(stats.id),
+                  filterRules
+                ).map((item) => ({
+                    ...item,
+                    mpn: item.mpn.replaceAll('*', ''),
+                }));
                 console.log('items', items);
                 console.log('stats', stats);
 
@@ -147,10 +158,6 @@ function Control() {
     }
     async function writeResearchRequestToDatastore(stats) {
         await rollunAPI.put('/api/datastore/EbayResearchRequests', stats);
-    }
-
-    function handleStop() {
-        // TODO
     }
 
     function getStatsFromMetricContainer(container) {
