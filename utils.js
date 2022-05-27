@@ -34,20 +34,6 @@ function isNotEmpty(field) {
   return item => Boolean(item[field]);
 }
 
-function fieldContainsCaseInsensitive(field, value) {
-  return item => {
-    const fieldValue = item[field] ?? '';
-    const isString = typeof fieldValue === 'string';
-
-    if (!isString) {
-      throw new Error(`Field - [${field}] with value - [${fieldValue}] is not a string`);
-    }
-
-    const regex = new RegExp(value, 'ig');
-    return regex.test(value);
-  }
-}
-
 function matches(item, field, regexp) {
   const fieldValue = item[field] ?? '';
   const isString = typeof fieldValue === 'string';

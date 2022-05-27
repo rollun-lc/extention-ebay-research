@@ -276,6 +276,9 @@ function Control() {
             const lastDateSoldText = row.querySelector('.research-table-row__dateLastSold')?.innerText;
             const lastDateSold = lastDateSoldText ? formatDate(new Date(lastDateSoldText)) : null;
 
+            const totalSalesText = row.querySelector('.research-table-row__totalSalesValue')?.innerText;
+            const totalSales = castDollarStringToNumber(totalSalesText);
+
             const currentDate = formatDate(new Date());
 
             return {
@@ -285,6 +288,7 @@ function Control() {
                 avg_sold_price: price,
                 avg_shipping: shipPrice,
                 total_sold: +totalSoldEl.innerText,
+                total_sales: totalSales,
                 last_date_sold: lastDateSold,
                 parsed_at: currentDate,
                 request_id: statId,
