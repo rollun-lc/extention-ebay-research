@@ -35,29 +35,22 @@ function isNotEmpty(field) {
 }
 
 function matches(item, field, regexp) {
-  const fieldValue = item[field] ?? '';
-  const isString = typeof fieldValue === 'string';
+  const fieldValue = (item[field] ?? '').toString();
 
-  if (!isString) {
-    throw new Error(`Field - [${field}] with value - [${fieldValue}] is not a string`);
-  }
+  console.log('matches', regexp, fieldValue, regexp.test(fieldValue));
 
-  return !regexp.test(fieldValue);
+  return regexp.test(fieldValue);
 }
 
 function fieldNotMatches(field, regexp) {
   return item => !matches(item, field, regexp);
 }
 
-function fieldMatches(field, regexp) {
-  return item => matches(item, field, regexp);
-}
-
 const filterRules = [
   totalSoldMoreThan(5),
   isNotEmpty('mpn'),
-  fieldMatches('mpn', /does not apply/ig),
-  fieldMatches('mpn', /null/ig),
+  fieldNotMatches('mpn', /does not apply/ig),
+  fieldNotMatches('mpn', /null/ig),
   fieldNotMatches('mpn', /,/ig),
   fieldNotMatches('mpn', / and /ig),
   fieldNotMatches('mpn', /\//ig),

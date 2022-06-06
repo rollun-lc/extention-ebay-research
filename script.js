@@ -4,7 +4,7 @@ const rollunAPI = axios.create({
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
-        'accept': 'application/json'
+        'Accept': 'application/json'
     }
 });
 
@@ -138,8 +138,8 @@ function Control() {
                 console.log('items', items);
                 console.log('stats', stats);
 
-                await writeResearchRequestToDatastore(stats);
                 await writeResearchResultsToDatastore(items);
+                await writeResearchRequestToDatastore(stats);
             } catch (e) {
                 console.log(e.stack);
                 alert(`Could not parse item - ${id}. ${e.message}`);
@@ -157,7 +157,11 @@ function Control() {
         )
     }
     async function writeResearchRequestToDatastore(stats) {
-        await rollunAPI.put('/api/datastore/EbayResearchRequests', stats);
+        await rollunAPI.post('/api/datastore/EbayResearchRequests', stats, {
+            headers: {
+                'If-Match': '*'
+            }
+        });
     }
 
     function getStatsFromMetricContainer(container) {
