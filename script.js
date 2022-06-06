@@ -206,6 +206,11 @@ function Control() {
 
         while (isValidOffset() && isValidListingToParse(result.at(-1))) {
             const nextPageButton = document.querySelector('button.pagination__next');
+
+            if (!nextPageButton) {
+                break;
+            }
+
             result.push(...await parseItemsList(statId));
             console.log(result);
             nextPageButton.click();
@@ -217,7 +222,7 @@ function Control() {
 
     function isValidOffset() {
         const errorText = document.querySelector('.page-notice__title');
-        return !errorText?.includes('The offset provided is incorrect. Please correct the offset.');
+        return !errorText?.innerText?.includes('The offset provided is incorrect. Please correct the offset.');
     }
 
     function parseStats(input, id) {
