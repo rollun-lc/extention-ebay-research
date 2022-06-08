@@ -1,8 +1,8 @@
 window.onload = main;
 const rollunAPI = axios.create({
     baseURL: 'https://rollun.net',
-    withCredentials: true,
     headers: {
+        'Authorization': 'Basic MTE2OTg0MDk5MDM3MTI0MzU2NTY2Ojlxak5JdGZo',
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
@@ -157,10 +157,10 @@ function Control() {
         )
     }
     async function writeResearchRequestToDatastore(stats) {
-        await rollunAPI.post('/api/datastore/EbayResearchRequests', stats, {
-            headers: {
-                'If-Match': '*'
-            }
+        await rollunAPI.put('/api/datastore/EbayResearchRequests', stats, {
+            // headers: {
+            //     'If-Match': '*'
+            // }
         });
     }
 
