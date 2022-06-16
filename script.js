@@ -112,7 +112,10 @@ function Control() {
 
     async function handleStart() {
         console.log('HI');
-        const dataToResearch = await getDataToResearch(500);
+        // const dataToResearch = await getDataToResearch(500);
+        const dataToResearch = [
+            { id: 'FRONTIER#2022-06-14', input: 'FRONTIER' }
+        ]
         setData(dataToResearch);
 
         for (let idx = 0; idx < dataToResearch.length; idx++) {
@@ -151,12 +154,15 @@ function Control() {
     }
 
     async function writeResearchResultsToDatastore(items) {
-        // did not find how to make multiCreate in datastore
-        await Promise.all(
-          items.map((item) =>
-            rollunAPI.post('/api/datastore/EbayResearchResults', item)
-          )
-        )
+        // spit items into chunks
+        const chunks = [];
+        for (let i = 0; i < items.length; i += 100) {
+            chunks.push(items.slice(i, i + 100));
+        }
+
+        for (const chunk of chunks) {
+            await rollunAPI.post('/api/datastore/EbayResearchResults', chunk);
+        }
     }
     async function writeResearchRequestToDatastore(stats) {
         await rollunAPI.put('/api/datastore/EbayResearchRequests', stats, {
