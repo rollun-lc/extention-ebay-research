@@ -112,10 +112,7 @@ function Control() {
 
     async function handleStart() {
         console.log('HI');
-        // const dataToResearch = await getDataToResearch(500);
-        const dataToResearch = [
-            { id: 'FRONTIER#2022-06-14', input: 'FRONTIER' }
-        ]
+        const dataToResearch = await getDataToResearch(500);
         setData(dataToResearch);
 
         for (let idx = 0; idx < dataToResearch.length; idx++) {
