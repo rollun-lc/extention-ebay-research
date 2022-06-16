@@ -86,6 +86,7 @@ function Control() {
         const [tabToSelect] = [...document.querySelector('.tabs__items').children]
           .filter(({ innerText }) => innerText.trim() === tabName);
 
+        console.log(tabToSelect);
         if (!tabToSelect) {
             // if no tab is found, just ignore
             return;
@@ -98,10 +99,10 @@ function Control() {
     function selectFilter(filterName) {
         const [filterElement] = [...document.querySelectorAll('.research-table-header__inner-item > .text')]
           .filter((item) => item.innerText === filterName);
-        const filterDownElement = filterElement.parentElement.querySelector('.down');
+        const filterDownElement = filterElement?.parentElement.querySelector('.down');
 
         if (!filterDownElement) {
-            filterElement.click();
+            filterElement?.click();
         }
     }
 
@@ -110,6 +111,7 @@ function Control() {
     }
 
     async function handleStart() {
+        console.log('HI');
         const dataToResearch = await getDataToResearch(500);
         setData(dataToResearch);
 
@@ -125,8 +127,8 @@ function Control() {
                 }
 
                 await selectCategory('ebay motors');
-                await selectTab('Sold');
                 await selectFilter('Total sold');
+                await selectTab('Sold');
                 const stats = parseStats(input, id);
                 const items = filterItems(
                   await parseAllItems(stats.id),
