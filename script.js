@@ -215,13 +215,14 @@ function Control() {
 
         while (isValidOffset() && isValidListingToParse(result.at(-1))) {
             const nextPageButton = document.querySelector('button.pagination__next');
-
-            if (!nextPageButton) {
-                break;
-            }
+            const isNextPageButtonDisabled = nextPageButton.getAttribute('aria-disabled') === 'true';
 
             result.push(...await parseItemsList(statId));
             console.log(result);
+            if (!nextPageButton || isNextPageButtonDisabled) {
+                break;
+            }
+
             nextPageButton.click();
             await wait(4000);
         }
