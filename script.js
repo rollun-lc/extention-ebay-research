@@ -215,7 +215,7 @@ function Control() {
 
         while (isValidOffset() && isValidListingToParse(result.at(-1))) {
             const nextPageButton = document.querySelector('button.pagination__next');
-            const isNextPageButtonDisabled = nextPageButton.getAttribute('aria-disabled') === 'true';
+            const isNextPageButtonDisabled = nextPageButton?.getAttribute('aria-disabled') === 'true';
 
             result.push(...await parseItemsList(statId));
             console.log(result);
