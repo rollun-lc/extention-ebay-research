@@ -83,7 +83,8 @@ function Control() {
     }
 
     async function selectTab(tabName) {
-        const [tabToSelect] = [...document.querySelector('.tabs__items').children]
+        const [tabToSelect] = [...document.querySelector('.tabs__items')?.children]
+          .filter(Boolean)
           .filter(({ innerText }) => innerText.trim() === tabName);
 
         console.log(tabToSelect);
@@ -112,7 +113,13 @@ function Control() {
 
     async function handleStart() {
         console.log('HI');
-        const dataToResearch = await getDataToResearch(500);
+        // const dataToResearch = await getDataToResearch(500);
+        const dataToResearch = [
+            {
+                id: 'CEQUENT#2021-05-01',
+                input: 'CEQUENT'
+            }
+        ];
         setData(dataToResearch);
 
         for (let idx = 0; idx < dataToResearch.length; idx++) {
