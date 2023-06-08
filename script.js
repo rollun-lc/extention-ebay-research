@@ -112,14 +112,7 @@ function Control() {
     }
 
     async function handleStart() {
-        console.log('HI');
-        // const dataToResearch = await getDataToResearch(500);
-        const dataToResearch = [
-            {
-                id: 'CEQUENT#2021-05-01',
-                input: 'CEQUENT'
-            }
-        ];
+        const dataToResearch = await getDataToResearch(500);
         setData(dataToResearch);
 
         for (let idx = 0; idx < dataToResearch.length; idx++) {
