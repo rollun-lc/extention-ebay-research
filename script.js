@@ -67,17 +67,9 @@ function Control() {
 
   async function getDataToResearch(limit) {
     const { data } = await rollunAPI.get(
-      '/api/datastore/EbayResearchRequests?eqn(parsed_at)'
+      '/api/datastore/EbayResearchRequests?eqn(parsed_at)&sort(-created_at)'
     );
-    return data
-      .sort((data1, data2) => {
-        const [, date1] = data1.id.split('#');
-        const [, date2] = data2.id.split('#');
-
-        return new Date(date1) - new Date(date2);
-      })
-      .map(({ id }) => ({ id, input: id.split('#')[0] }))
-      .slice(0, limit ?? data.length);
+    return data.slice(0, limit ?? data.length);
   }
 
   function isListingFoundInSearch() {
@@ -143,14 +135,13 @@ function Control() {
         await selectCategory('ebay motors');
         await selectFilter('Total sold');
         await selectTab('Sold');
-        const stats = parseStats(input, id);
-        const items = filterItems(
-          await parseAllItems(stats.id),
-          filterRules
-        ).map((item) => ({
-          ...item,
-          mpn: item.mpn.replaceAll('*', ''),
-        }));
+        const stats = parseStats(data, id);
+        const items = filterItems(await parseAllItems(input), filterRules).map(
+          (item) => ({
+            ...item,
+            mpn: item.mpn.replaceAll('*', ''),
+          })
+        );
         console.log('items', items);
         console.log('stats', stats);
 
@@ -176,7 +167,7 @@ function Control() {
     }
   }
   async function writeResearchRequestToDatastore(stats) {
-    await rollunAPI.put('/api/datastore/EbayResearchRequests', stats, {
+    await rollunAPI.put(`/api/datastore/EbayResearchRequests`, stats, {
       // headers: {
       //     'If-Match': '*'
       // }
