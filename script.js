@@ -26,6 +26,7 @@ function main() {
 
 function Control() {
   const [data, setData] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [progress, setProgress] = useState(null);
 
   async function selectCategory(category) {
@@ -113,20 +114,16 @@ function Control() {
   }
 
   async function handleStart() {
-    const dataToResearch = await getDataToResearch(500);
-    setData(dataToResearch);
-
-    for (let idx = 0; idx < dataToResearch.length; idx++) {
-      const { id, input } = dataToResearch[idx];
+    for (let idx = 0; idx < data.length; idx++) {
+      const input = data[idx];
       try {
         setProgress({
-          text: `handling ${idx} input of total ${dataToResearch.length}`,
+          text: `handling ${idx} input of total ${data.length}`,
         });
         await runSearch(input);
 
         if (!isListingFoundInSearch()) {
           await writeResearchRequestToDatastore({
-            id,
             parsed_at: formatDate(new Date()),
           });
           continue;
@@ -135,7 +132,7 @@ function Control() {
         await selectCategory('ebay motors');
         await selectFilter('Total sold');
         await selectTab('Sold');
-        const stats = parseStats(data, id);
+        const stats = parseStats(input);
         const items = filterItems(await parseAllItems(input), filterRules).map(
           (item) => ({
             ...item,
@@ -149,10 +146,10 @@ function Control() {
         await writeResearchRequestToDatastore(stats);
       } catch (e) {
         console.log(e.stack);
-        alert(`Could not parse item - ${id}. ${e.message}`);
+        alert(`Could not parse item - ${input}. ${e.message}`);
       }
     }
-    setProgress({ text: `Finished parsing ${dataToResearch.length} inputs` });
+    setProgress({ text: `Finished parsing ${data.length} inputs` });
   }
 
   async function writeResearchResultsToDatastore(items) {
@@ -167,7 +164,7 @@ function Control() {
     }
   }
   async function writeResearchRequestToDatastore(stats) {
-    await rollunAPI.put(`/api/datastore/EbayResearchRequests`, stats, {
+    await rollunAPI.post(`/api/datastore/EbayResearchRequests`, stats, {
       // headers: {
       //     'If-Match': '*'
       // }
@@ -246,11 +243,10 @@ function Control() {
     );
   }
 
-  function parseStats(input, id) {
+  function parseStats(input) {
     const metricsContainer = document.querySelector('.aggregates');
     const currentDate = formatDate(new Date());
     const result = {
-      id,
       parsed_at: currentDate,
     };
 
@@ -353,10 +349,31 @@ function Control() {
     return Promise.all(Array.from(rows).map(parseRow));
   }
 
+  function handleModalOpen() {
+    setIsModalOpen(true);
+  }
+
   return e(
     'div',
     {},
+    !progress &&
+      !isModalOpen &&
+      e('button', { onClick: handleModalOpen }, 'upload data to research'),
     !progress && e('button', { onClick: handleStart }, 'start'),
+    isModalOpen &&
+      e('textarea', { id: 'research-data', onChange: (e) => console.log(e) }),
+    isModalOpen &&
+      e(
+        'button',
+        {
+          onClick: () => {
+            const value = document.getElementById('research-data').value;
+            setData(value.split('\n'));
+            setIsModalOpen(false);
+          },
+        },
+        'upload'
+      ),
     progress && e('div', {}, progress.text),
     data && e('div', {}, `Loaded ${data.length} input(s)`)
   );
