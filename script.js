@@ -346,7 +346,24 @@ function Control() {
       };
     }
 
-    return Promise.all(Array.from(rows).map(parseRow));
+    const rowsChunks = [...rows].reduce((acc, curr) => {
+      const lastChunk = acc.at(-1);
+      if (!lastChunk || lastChunk.length === 5) {
+        acc.push([curr]);
+      } else {
+        lastChunk.push(curr);
+      }
+
+      return acc;
+    }, []);
+
+    const result = [];
+
+    for (const chunk of rowsChunks) {
+      result.push(...(await Promise.all(chunk.map(parseRow))));
+    }
+
+    return result;
   }
 
   function handleModalOpen() {
