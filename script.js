@@ -85,7 +85,6 @@ function Control() {
       .filter(Boolean)
       .filter(({ innerText }) => innerText.trim() === tabName);
 
-    console.log(tabToSelect);
     if (!tabToSelect) {
       // if no tab is found, just ignore
       return;
@@ -224,7 +223,6 @@ function Control() {
         nextPageButton?.getAttribute('aria-disabled') === 'true';
 
       result.push(...(await parseItemsList(statId)));
-      console.log(result);
       if (!nextPageButton || isNextPageButtonDisabled) {
         break;
       }
@@ -232,6 +230,8 @@ function Control() {
       nextPageButton.click();
       await wait(4000);
     }
+
+    console.log('result', result);
 
     return result;
   }
@@ -266,7 +266,7 @@ function Control() {
   async function parseItemsList(statId) {
     const rows = document.querySelectorAll('.research-table-row');
 
-    async function getMpn(id) {
+    async function getItemInfoFromItemPage(id) {
       const htmlPage = await (
         await fetch(
           `https://www.ebay.com/itm/${id}?nordt=true&orig_cvip=true&rt=nc`
@@ -274,20 +274,21 @@ function Control() {
       ).text();
       const doc = new DOMParser().parseFromString(htmlPage, 'text/html');
 
-      const mpnLabelIndex = [
-        ...doc.querySelectorAll('.ux-labels-values__labels'),
-      ].findIndex((item) =>
-        'Manufacturer Part Number'.includes(item.innerText)
-      );
-      if (mpnLabelIndex === -1) {
-        return null;
-      }
+      const itemSpecifics = {
+        mpn: '.ux-labels-values--manufacturerPartNumber .ux-textspans',
+        brand: '.ux-labels-values--brand .ux-textspans',
+      };
 
-      return (
-        doc
-          .querySelectorAll('.ux-labels-values__values')
-          [mpnLabelIndex]?.innerText?.trim() || null
-      );
+      return Object.entries(itemSpecifics).reduce((acc, [key, selector]) => {
+        // 2 spans, first is label, second is value
+        const [, el] = [...doc.querySelectorAll(selector)];
+        console.log('el', el, key, selector, el.innerText);
+        if (el) {
+          const text = el.innerText;
+          acc[key] = text;
+        }
+        return acc;
+      }, {});
     }
 
     async function parseRow(row) {
@@ -342,7 +343,7 @@ function Control() {
         last_date_sold: lastDateSold,
         parsed_at: currentDate,
         request_id: statId,
-        mpn: await getMpn(id),
+        ...(await getItemInfoFromItemPage(id)),
       };
     }
 
@@ -377,6 +378,13 @@ function Control() {
       !isModalOpen &&
       e('button', { onClick: handleModalOpen }, 'upload data to research'),
     !progress && e('button', { onClick: handleStart }, 'start'),
+    e(
+      'a',
+      {
+        href: 'https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=stub&dayRange=30&categoryId=6000&offset=0&limit=50',
+      },
+      'reset'
+    ),
     isModalOpen &&
       e('textarea', { id: 'research-data', onChange: (e) => console.log(e) }),
     isModalOpen &&

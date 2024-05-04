@@ -1,14 +1,9 @@
 {
   "name": "Ebay research",
-  "version": "0.0.22",
-  "manifest_version": 2,
+  "version": "1.0.0",
+  "manifest_version": 3,
   "author": "rollun.com",
-  "background": {
-    "scripts": [
-      "hot-reload.js"
-    ]
-  },
-  "browser_action": {
+  "action": {
     "default_title": "Ebay - research lots faster",
     "default_icon": "icon.png"
   },
@@ -32,6 +27,5 @@
       ],
       "run_at": "document_end"
     }
-  ],
-  "permissions": []
+  ]
 }
