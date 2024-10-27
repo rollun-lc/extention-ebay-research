@@ -1,0 +1,20 @@
+{
+  "name": "extention-ebay-research",
+  "version": "1.0.0",
+  "description": "To research, you will need to do the following: - go to this link - https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=stub&dayRange=30&categoryId=6000&offset=0&limit=50 - (optional) change category - press start.",
+  "main": "axios.js",
+  "scripts": {
+    "pack": "rm -f ebay-research*.zip && zip -r ebay-research-$(cat manifest.json| jq -r .version).zip . -x '.git/*' -x '.github/*'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rollun-com/extention-ebay-research.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rollun-com/extention-ebay-research/issues"
+  },
+  "homepage": "https://github.com/rollun-com/extention-ebay-research#readme"
+}

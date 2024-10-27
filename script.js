@@ -180,7 +180,7 @@ function Control() {
       total_sold: numberStringParser,
       total_sellers: numberStringParser,
       sold_price_range: (value) => {
-        const [min, max] = value.split('–');
+        const [min, max] = value.split('-');
         return {
           sold_price_min: castDollarStringToNumber(min.trim()),
           sold_price_max: castDollarStringToNumber(max.trim()),
@@ -197,6 +197,8 @@ function Control() {
         if (!(snakeCaseHeader in parseStrategy)) {
           return acc;
         }
+
+        console.log('header', header, snakeCaseHeader, value);
 
         return {
           ...acc,
@@ -278,16 +280,22 @@ function Control() {
         mpn: '.ux-labels-values--manufacturerPartNumber .ux-textspans',
         brand: '.ux-labels-values--brand .ux-textspans',
       };
-
       return Object.entries(itemSpecifics).reduce((acc, [key, selector]) => {
         // 2 spans, first is label, second is value
-        const [, el] = [...doc.querySelectorAll(selector)];
-        console.log('el', el, key, selector, el.innerText);
-        if (el) {
-          const text = el.innerText;
-          acc[key] = text;
+        const spans = [...doc.querySelectorAll(selector)];
+        try {
+          const [, el] = spans;
+
+          if (el) {
+            const text = el.innerText;
+            acc[key] = text;
+          }
+          return acc;
+        } catch (err) {
+          console.log('failed to parse item info', id, key, selector);
+          spans.forEach((span, idx) => console.log(`span ${idx}`, span));
+          throw err;
         }
-        return acc;
       }, {});
     }
 
