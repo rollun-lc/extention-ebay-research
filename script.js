@@ -138,11 +138,21 @@ function Control() {
             mpn: item.mpn.replaceAll('*', ''),
           })
         );
+        stats.total_sold = items.reduce(
+          (acc, curr) => acc + curr.total_sold,
+          0
+        );
+        stats.total_sales = items.reduce(
+          (acc, curr) => acc + curr.total_sales,
+          0
+        );
+
         console.log('items', items);
         console.log('stats', stats);
 
-        await writeResearchResultsToDatastore(items);
-        await writeResearchRequestToDatastore(stats);
+        // TODO: cleanup
+        // await writeResearchResultsToDatastore(items);
+        // await writeResearchRequestToDatastore(stats);
       } catch (e) {
         console.log(e.stack);
         alert(`Could not parse item - ${input}. ${e.message}`);
