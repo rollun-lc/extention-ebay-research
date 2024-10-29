@@ -150,9 +150,8 @@ function Control() {
         console.log('items', items);
         console.log('stats', stats);
 
-        // TODO: cleanup
-        // await writeResearchResultsToDatastore(items);
-        // await writeResearchRequestToDatastore(stats);
+        await writeResearchResultsToDatastore(items);
+        await writeResearchRequestToDatastore(stats);
       } catch (e) {
         console.log(e.stack);
         alert(`Could not parse item - ${input}. ${e.message}`);
