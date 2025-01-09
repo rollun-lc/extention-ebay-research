@@ -22,10 +22,6 @@ async function wait(ms) {
   return new Promise((resolve) => setTimeout(() => resolve(), ms));
 }
 
-function insertAfter(referenceNode, newNode) {
-  referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-}
-
 function totalSoldMoreThan(number) {
   return item => item.total_sold > number;
 }

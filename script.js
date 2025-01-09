@@ -16,10 +16,11 @@ function setupShortcuts() {
 function main() {
   setupShortcuts();
 
-  const mountContainer = document.querySelectorAll('header')[1];
+  const mountContainer = document.querySelector('.sh-core-layout__left');
   const mountElement = document.createElement('div');
   mountElement.id = 'ebay-chrome-extension';
-  insertAfter(mountContainer.firstElementChild, mountElement);
+
+  mountContainer.appendChild(mountElement);
 
   ReactDOM.render(e(Control), mountElement);
 }
@@ -28,6 +29,11 @@ function Control() {
   const [data, setData] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [filterResults, setFilterResults] = useState(true);
+
+  function toggleFilterResults() {
+    setFilterResults((prev) => !prev);
+  }
 
   async function selectCategory(category) {
     document.querySelector('.category-selector-panel__edit-button')?.click();
@@ -115,10 +121,10 @@ function Control() {
   async function handleStart() {
     for (let idx = 0; idx < data.length; idx++) {
       const input = data[idx];
+      const progressPrefix = `handling ${idx + 1}/${data.length} row`;
       try {
-        setProgress({
-          text: `handling ${idx} input of total ${data.length}`,
-        });
+        setProgress({ text: `${progressPrefix}: click search` });
+
         await runSearch(input);
 
         if (!isListingFoundInSearch()) {
@@ -128,16 +134,26 @@ function Control() {
           continue;
         }
 
+        setProgress({ text: `${progressPrefix}: select category` });
         await selectCategory('ebay motors');
-        await selectFilter('Total sold');
+
+        setProgress({ text: `${progressPrefix}: select filter` });
+        selectFilter('Total sold');
+
+        setProgress({ text: `${progressPrefix}: select tab` });
         await selectTab('Sold');
+
+        setProgress({ text: `${progressPrefix}: parsing stats` });
         const stats = parseStats(input);
-        const items = filterItems(await parseAllItems(input), filterRules).map(
-          (item) => ({
-            ...item,
-            mpn: item.mpn.replaceAll('*', ''),
-          })
+
+        setProgress({ text: `${progressPrefix}: parsing items` });
+        const parsedItems = await parseAllItems(stats.id, (progressText) =>
+          setProgress({ text: `${progressPrefix}: ${progressText}` })
         );
+        const items = filterResults
+          ? filterItems(parsedItems, filterRules)
+          : parsedItems;
+
         stats.total_sold = items.reduce(
           (acc, curr) => acc + curr.total_sold,
           0
@@ -150,14 +166,35 @@ function Control() {
         console.log('items', items);
         console.log('stats', stats);
 
+        setProgress({
+          text: `${progressPrefix}: writing ${items.length} items to datastore`,
+        });
         await writeResearchResultsToDatastore(items);
+
+        setProgress({
+          text: `${progressPrefix}: writing request to datastore`,
+        });
         await writeResearchRequestToDatastore(stats);
+
+        let delayBeforeNext = 4000;
+        const sec = 1000;
+        while (delayBeforeNext > 0) {
+          setProgress({
+            text: `${progressPrefix}: waiting ${
+              delayBeforeNext / sec
+            }s before next`,
+          });
+          await new Promise((resolve) => setTimeout(resolve, sec));
+          delayBeforeNext -= sec;
+        }
+
+        setProgress({ text: `${progressPrefix}: done` });
       } catch (e) {
         console.log(e.stack);
         alert(`Could not parse item - ${input}. ${e.message}`);
       }
     }
-    setProgress({ text: `Finished parsing ${data.length} inputs` });
+    setProgress({ text: `Finished parsing ${data.length} rows` });
   }
 
   async function writeResearchResultsToDatastore(items) {
@@ -218,7 +255,7 @@ function Control() {
     );
   }
 
-  async function parseAllItems(statId) {
+  async function parseAllItems(statId, progressCallback) {
     const result = [];
     const isValidListingToParse = (item) => {
       if (!item) {
@@ -228,23 +265,34 @@ function Control() {
       return item.total_sold > 5;
     };
 
+    let page = 1;
     while (isValidOffset() && isValidListingToParse(result.at(-1))) {
       const nextPageButton = document.querySelector('button.pagination__next');
       const isNextPageButtonDisabled =
         nextPageButton?.getAttribute('aria-disabled') === 'true';
 
-      result.push(...(await parseItemsList(statId)));
+      const progressPrefix = `page ${page++}`;
+
+      progressCallback(progressPrefix);
+      const itemsResult = await parseItemsList(statId, (text) =>
+        progressCallback(`${progressPrefix}: ${text}`)
+      );
+
+      result.push(...itemsResult);
       if (!nextPageButton || isNextPageButtonDisabled) {
         break;
       }
 
       nextPageButton.click();
-      await wait(4000);
+      await wait(1000);
     }
 
     console.log('result', result);
 
-    return result;
+    return result.map((item) => ({
+      ...item,
+      mpn: item.mpn?.replaceAll('*', ''),
+    }));
   }
 
   function isValidOffset() {
@@ -274,7 +322,7 @@ function Control() {
     };
   }
 
-  async function parseItemsList(statId) {
+  async function parseItemsList(statId, progressCallback) {
     const rows = document.querySelectorAll('.research-table-row');
 
     async function getItemInfoFromItemPage(id) {
@@ -377,8 +425,11 @@ function Control() {
 
     const result = [];
 
-    for (const chunk of rowsChunks) {
-      result.push(...(await Promise.all(chunk.map(parseRow))));
+    let i = 1;
+    const itemRows = rowsChunks.flat();
+    for (const row of itemRows) {
+      progressCallback(`parsing item ${i++} of ${itemRows.length}`);
+      result.push(await parseRow(row));
     }
 
     return result;
@@ -391,32 +442,65 @@ function Control() {
   return e(
     'div',
     {},
-    !progress &&
-      !isModalOpen &&
-      e('button', { onClick: handleModalOpen }, 'upload data to research'),
-    !progress && e('button', { onClick: handleStart }, 'start'),
     e(
-      'a',
-      {
-        href: 'https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=stub&dayRange=30&categoryId=6000&offset=0&limit=50',
-      },
-      'reset'
-    ),
-    isModalOpen &&
-      e('textarea', { id: 'research-data', onChange: (e) => console.log(e) }),
-    isModalOpen &&
+      'div',
+      {},
+      e('button', { disabled: !!progress, onClick: handleStart }, 'start'),
       e(
         'button',
         {
-          onClick: () => {
-            const value = document.getElementById('research-data').value;
-            setData(value.split('\n'));
-            setIsModalOpen(false);
-          },
+          onClick: () =>
+            (window.location.href =
+              'https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords=stub&dayRange=30&categoryId=6000&offset=0&limit=50'),
         },
-        'upload'
-      ),
-    progress && e('div', {}, progress.text),
-    data && e('div', {}, `Loaded ${data.length} input(s)`)
+        'reset'
+      )
+    ),
+    e(
+      'div',
+      {},
+      isModalOpen
+        ? [
+            e('textarea', { id: 'research-data', rows: 10 }),
+            e(
+              'button',
+              {
+                onClick: () => {
+                  const value = document.getElementById('research-data').value;
+                  setData(value.split('\n'));
+                  setIsModalOpen(false);
+                },
+              },
+              'upload'
+            ),
+            e(
+              'button',
+              {
+                onClick: () => {
+                  setIsModalOpen(false);
+                },
+              },
+              'cancel'
+            ),
+          ]
+        : [
+            e(
+              'button',
+              { disabled: !!progress, onClick: handleModalOpen },
+              'upload data to research '
+            ),
+            e('div', {}, `Loaded ${data ? data.length : 'no'} rows`),
+          ]
+    ),
+    e(
+      'div',
+      {},
+      e(
+        'button',
+        { disabled: !!progress, onClick: toggleFilterResults },
+        filterResults ? "disable 'filter results'" : "enable 'filter results'"
+      )
+    ),
+    progress && e('div', {}, progress.text)
   );
 }
