@@ -35,7 +35,7 @@ function Control() {
     setFilterResults((prev) => !prev);
   }
 
-  async function selectCategory(category) {
+  async function selectCategory(category, progressCallback) {
     document.querySelector('.category-selector-panel__edit-button')?.click();
 
     Array.from(
@@ -50,10 +50,12 @@ function Control() {
       .querySelector('.category-selection-lightbox-dialog__footer-apply')
       ?.click();
 
-    await wait(4000);
+    await waitWithProgress(4000, (timeLeft) =>
+      progressCallback(`waiting ${timeLeft}s for category to be selected`)
+    );
   }
 
-  async function runSearch(searchString) {
+  async function runSearch(searchString, progressCallback) {
     // insert input value
     const inputQ = '.textbox__control';
     const input = document.querySelector(inputQ);
@@ -63,13 +65,18 @@ function Control() {
       new Event('input', { bubbles: true, cancelable: true })
     );
 
-    await wait(150);
+    await waitWithProgress(2000, (timeLeft) =>
+      progressCallback(`waiting ${timeLeft}s before search`)
+    );
+
     // trigger search
     const searchBtnQ = '.search-input-panel__research-button';
     const searchBtn = document.querySelector(searchBtnQ);
     searchBtn.click();
 
-    await wait(4000);
+    await waitWithProgress(4000, (timeLeft) =>
+      progressCallback(`waiting ${timeLeft}s for search results`)
+    );
   }
 
   async function getDataToResearch(limit) {
@@ -86,7 +93,7 @@ function Control() {
     return !errorContainer;
   }
 
-  async function selectTab(tabName) {
+  async function selectTab(tabName, progressCallback) {
     const [tabToSelect] = [...document.querySelector('.tabs__items')?.children]
       .filter(Boolean)
       .filter(({ innerText }) => innerText.trim() === tabName);
@@ -97,10 +104,12 @@ function Control() {
     }
 
     tabToSelect.click();
-    await wait(3000);
+    await waitWithProgress(3000, (timeLeft) =>
+      progressCallback(`waiting ${timeLeft}s for tab to be selected`)
+    );
   }
 
-  function selectFilter(filterName) {
+  async function selectFilter(filterName, progressCallback) {
     const [filterElement] = [
       ...document.querySelectorAll(
         '.research-table-header__inner-item > .text'
@@ -112,6 +121,10 @@ function Control() {
     if (!filterDownElement) {
       filterElement?.click();
     }
+
+    await waitWithProgress(2000, (timeLeft) =>
+      progressCallback(`waiting ${timeLeft}s for filter to be selected`)
+    );
   }
 
   function filterItems(items, rules) {
@@ -125,7 +138,9 @@ function Control() {
       try {
         setProgress({ text: `${progressPrefix}: click search` });
 
-        await runSearch(input);
+        await runSearch(input, (text) =>
+          setProgress({ text: `${progressPrefix}: run search: ${text}` })
+        );
 
         if (!isListingFoundInSearch()) {
           await writeResearchRequestToDatastore({
@@ -135,13 +150,19 @@ function Control() {
         }
 
         setProgress({ text: `${progressPrefix}: select category` });
-        await selectCategory('ebay motors');
+        await selectCategory('ebay motors', (text) =>
+          setProgress({ text: `${progressPrefix}: select category: ${text}` })
+        );
 
         setProgress({ text: `${progressPrefix}: select filter` });
-        selectFilter('Total sold');
+        await selectFilter('Total sold', (text) =>
+          setProgress({ text: `${progressPrefix}: select filter: ${text}` })
+        );
 
         setProgress({ text: `${progressPrefix}: select tab` });
-        await selectTab('Sold');
+        await selectTab('Sold', (text) =>
+          setProgress({ text: `${progressPrefix}: select tab: ${text}` })
+        );
 
         setProgress({ text: `${progressPrefix}: parsing stats` });
         const stats = parseStats(input);
@@ -176,17 +197,11 @@ function Control() {
         });
         await writeResearchRequestToDatastore(stats);
 
-        let delayBeforeNext = 4000;
-        const sec = 1000;
-        while (delayBeforeNext > 0) {
+        await waitWithProgress(4000, (timeLeft) =>
           setProgress({
-            text: `${progressPrefix}: waiting ${
-              delayBeforeNext / sec
-            }s before next`,
-          });
-          await new Promise((resolve) => setTimeout(resolve, sec));
-          delayBeforeNext -= sec;
-        }
+            text: `${progressPrefix}: waiting ${timeLeft}s before next`,
+          })
+        );
 
         setProgress({ text: `${progressPrefix}: done` });
       } catch (e) {
@@ -284,7 +299,9 @@ function Control() {
       }
 
       nextPageButton.click();
-      await wait(1000);
+      await waitWithProgress(2000, (timeLeft) =>
+        progressCallback(`${progressPrefix}: waiting ${timeLeft}s before next`)
+      );
     }
 
     console.log('result', result);
@@ -428,8 +445,11 @@ function Control() {
     let i = 1;
     const itemRows = rowsChunks.flat();
     for (const row of itemRows) {
-      progressCallback(`parsing item ${i++} of ${itemRows.length}`);
+      progressCallback(`item ${i++} of ${itemRows.length}`);
       result.push(await parseRow(row));
+      await waitWithProgress(2000, (timeLeft) =>
+        progressCallback(`waiting ${timeLeft}s before next`)
+      );
     }
 
     return result;
@@ -495,10 +515,11 @@ function Control() {
     e(
       'div',
       {},
+      e('div', {}, `filter results: ${filterResults ? 'enabled' : 'disabled'}`),
       e(
         'button',
         { disabled: !!progress, onClick: toggleFilterResults },
-        filterResults ? "disable 'filter results'" : "enable 'filter results'"
+        filterResults ? 'disable' : 'enable'
       )
     ),
     progress && e('div', {}, progress.text)
