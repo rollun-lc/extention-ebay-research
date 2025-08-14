@@ -38,6 +38,9 @@ function Control() {
   async function selectCategory(category, progressCallback) {
     document.querySelector('.category-selector-panel__edit-button')?.click();
 
+    // Random pause before clicking category
+    await waitRandom(1000, 3000);
+
     Array.from(
       document.querySelectorAll(
         '[role="tree"] [role="treeitem"] .category-selection-row__category-name-value'
@@ -46,35 +49,48 @@ function Control() {
       .find(({ innerText }) => new RegExp(category, 'ig').test(innerText))
       ?.click();
 
+    // Random pause before applying
+    await waitRandom(1500, 2500);
+
     document
       .querySelector('.category-selection-lightbox-dialog__footer-apply')
       ?.click();
 
-    await waitWithProgress(4000, (timeLeft) =>
+    await waitWithProgress(8000, (timeLeft) =>
       progressCallback(`waiting ${timeLeft}s for category to be selected`)
     );
   }
 
   async function runSearch(searchString, progressCallback) {
+    // Random pause before starting search
+    await waitRandom(2000, 4000);
+    
     // insert input value
     const inputQ = '.textbox__control';
     const input = document.querySelector(inputQ);
     input.value = searchString;
 
+    // Random pause before dispatching event
+    await waitRandom(500, 1500);
+
     input.dispatchEvent(
       new Event('input', { bubbles: true, cancelable: true })
     );
 
-    await waitWithProgress(2000, (timeLeft) =>
+    await waitWithProgress(3000, (timeLeft) =>
       progressCallback(`waiting ${timeLeft}s before search`)
     );
 
     // trigger search
     const searchBtnQ = '.search-input-panel__research-button';
     const searchBtn = document.querySelector(searchBtnQ);
+    
+    // Random pause before clicking search button
+    await waitRandom(1000, 2000);
+    
     searchBtn.click();
 
-    await waitWithProgress(4000, (timeLeft) =>
+    await waitWithProgress(8000, (timeLeft) =>
       progressCallback(`waiting ${timeLeft}s for search results`)
     );
   }
@@ -103,8 +119,11 @@ function Control() {
       return;
     }
 
+    // Random pause before clicking tab
+    await waitRandom(800, 2000);
+
     tabToSelect.click();
-    await waitWithProgress(3000, (timeLeft) =>
+    await waitWithProgress(5000, (timeLeft) =>
       progressCallback(`waiting ${timeLeft}s for tab to be selected`)
     );
   }
@@ -119,10 +138,12 @@ function Control() {
       filterElement?.parentElement.querySelector('.down');
 
     if (!filterDownElement) {
+      // Random pause before clicking filter
+      await waitRandom(1000, 2500);
       filterElement?.click();
     }
 
-    await waitWithProgress(2000, (timeLeft) =>
+    await waitWithProgress(3000, (timeLeft) =>
       progressCallback(`waiting ${timeLeft}s for filter to be selected`)
     );
   }
@@ -135,6 +156,18 @@ function Control() {
     for (let idx = 0; idx < data.length; idx++) {
       const input = data[idx];
       const progressPrefix = `handling ${idx + 1}/${data.length} row`;
+      
+      // Random pause before starting item processing
+      await waitRandom(3000, 6000);
+      
+      // Long pause every 10 items to simulate break
+      if (idx > 0 && idx % 20 === 0) {
+        setProgress({ text: `${progressPrefix}: taking a break...` });
+        await waitWithProgress(getRandomBetween(240000, 600000), (timeLeft) =>
+          setProgress({ text: `${progressPrefix}: break time ${Math.ceil(timeLeft/60)}m ${timeLeft%60}s` })
+        );
+      }
+      
       try {
         setProgress({ text: `${progressPrefix}: click search` });
 
@@ -197,9 +230,17 @@ function Control() {
         });
         await writeResearchRequestToDatastore(stats);
 
-        await waitWithProgress(4000, (timeLeft) =>
+        await waitWithProgress(8000, (timeLeft) =>
           setProgress({
             text: `${progressPrefix}: waiting ${timeLeft}s before next`,
+          })
+        );
+
+        // Add random delay to simulate human behavior
+        const randomDelay = Math.floor(Math.random() * 5000) + 2000; // 2-7 seconds
+        await waitWithProgress(randomDelay, (timeLeft) =>
+          setProgress({
+            text: `${progressPrefix}: random delay ${timeLeft}s`,
           })
         );
 
@@ -298,8 +339,11 @@ function Control() {
         break;
       }
 
+      // Random pause before going to next page
+      await waitRandom(3000, 6000);
+
       nextPageButton.click();
-      await waitWithProgress(2000, (timeLeft) =>
+      await waitWithProgress(5000, (timeLeft) =>
         progressCallback(`${progressPrefix}: waiting ${timeLeft}s before next`)
       );
     }
@@ -343,6 +387,8 @@ function Control() {
     const rows = document.querySelectorAll('.research-table-row');
 
     async function getItemInfoFromItemPage(id) {
+      await waitRandom(2000, 4000);
+      
       const htmlPage = await (
         await fetch(
           `https://www.ebay.com/itm/${id}?nordt=true&orig_cvip=true&rt=nc`
@@ -446,8 +492,12 @@ function Control() {
     const itemRows = rowsChunks.flat();
     for (const row of itemRows) {
       progressCallback(`item ${i++} of ${itemRows.length}`);
+      
+      // Random pause before processing listing
+      await waitRandom(2000, 4000);
+      
       result.push(await parseRow(row));
-      await waitWithProgress(2000, (timeLeft) =>
+      await waitWithProgress(4000, (timeLeft) =>
         progressCallback(`waiting ${timeLeft}s before next`)
       );
     }

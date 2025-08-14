@@ -28,6 +28,15 @@ async function wait(ms) {
   return new Promise((resolve) => setTimeout(() => resolve(), ms));
 }
 
+function getRandomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function waitRandom(minMs, maxMs) {
+  const delay = getRandomBetween(minMs, maxMs);
+  return wait(delay);
+}
+
 async function waitWithProgress(timeMs, progressCallback) {
   let delayBeforeNext = timeMs;
   const sec = 1000;
