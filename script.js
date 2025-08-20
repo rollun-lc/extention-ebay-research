@@ -163,7 +163,7 @@ function Control() {
       // Long pause every 10 items to simulate break
       if (idx > 0 && idx % 20 === 0) {
         setProgress({ text: `${progressPrefix}: taking a break...` });
-        await waitWithProgress(getRandomBetween(240000, 600000), (timeLeft) =>
+        await waitWithProgress(getRandomBetween(60000, 120000), (timeLeft) =>
           setProgress({ text: `${progressPrefix}: break time ${Math.ceil(timeLeft/60)}m ${timeLeft%60}s` })
         );
       }

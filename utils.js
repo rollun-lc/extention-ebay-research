@@ -24,6 +24,9 @@ const percentStringParser = (value, header) => ({
   [header]: castPercentStringToNumber(value),
 });
 
+// Global multiplier to reduce all artificial delays across the app
+const DELAY_FACTOR = 0.7;
+
 async function wait(ms) {
   return new Promise((resolve) => setTimeout(() => resolve(), ms));
 }
@@ -33,12 +36,14 @@ function getRandomBetween(min, max) {
 }
 
 async function waitRandom(minMs, maxMs) {
-  const delay = getRandomBetween(minMs, maxMs);
+  const scaledMin = Math.round(minMs * DELAY_FACTOR);
+  const scaledMax = Math.round(maxMs * DELAY_FACTOR);
+  const delay = getRandomBetween(scaledMin, scaledMax);
   return wait(delay);
 }
 
 async function waitWithProgress(timeMs, progressCallback) {
-  let delayBeforeNext = timeMs;
+  let delayBeforeNext = Math.round(timeMs * DELAY_FACTOR);
   const sec = 1000;
   while (delayBeforeNext > 0) {
     progressCallback(Math.ceil(delayBeforeNext / sec));
